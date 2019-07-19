@@ -1,10 +1,12 @@
 import numpy as np
 from collections import OrderedDict
+from scipy.optimize import linprog
 
 from solution_options import *
 from solver_utils import *
 import utils
-from utils import Rand_replace, Median_func
+from utils import Rand_replace, Median_func, PG
+from drawings import draw_nice_hists, draw_nasty_profile
 
 def_opts = {'mode': separate_mode, 
             'lam_q': lam_q_fixed, 
@@ -167,7 +169,9 @@ def Solve(dgT, dgeqT, results, threshold,
     if verbose:
         #print(idx_criminals)
         Rank_info(A)
-        print(xs)
+        print('x:')
+        for i in xs.items():
+            print('%s, |%s| = %d' % (i[0], i[0], i[1]))
     
     if alg in [LS, NNLS]:
         x = LS_NNLS(A, b, alg, verbose=verbose)
@@ -182,7 +186,7 @@ def Solve(dgT, dgeqT, results, threshold,
             b_min = np.zeros(A.shape[1])
             b_min[: idx_lam_pq] = [None]*idx_lam_pq
 
-            b_max = [None]*A.shape[1]
+            b_max = np.array([None]*A.shape[1])
 
             x = B_LS(A, b, tuple(zip(b_min, b_max)), threshold, verbose=verbose)
         elif opt['mode'] != separate_mode:
@@ -201,21 +205,75 @@ def Solve(dgT, dgeqT, results, threshold,
             x = np.zeros(A.shape[1])
     
     elif alg == 3 and opt['mode'] == separate_mode:
-        C = Cg + Cd
-        c = C[np.setdiff1d(np.arange(Nbus), bus_idx)]
+        #C = Cg + Cd
+        cg = Cg[np.setdiff1d(np.arange(Nbus), idx_to_replace)]
+        cd = Cd[np.setdiff1d(np.arange(Nbus), idx_to_replace)]
         
-        b_min = np.zeros(A.shape[1])
-        
-        #print(c > 0)
-        b_min[:len(c)][c > 0] = c[c > 0]
+        b_min = np.zeros(A.shape[1])#np.array([None]*A.shape[1])
+        b_min[:len(cg)][cg > 0] = cg[cg > 0]
         
         b_max = np.array([None]*A.shape[1])
-        #print(len(c))
-        b_max[:len(c)][c < 0] = abs(c[c < 0])
-        b_max[lam_p_idx: ] = [None]*(len(b_max) - lam_p_idx)
+        b_max[:len(cd)][cd < 0] = abs(cd[cd < 0])
         
+        b_max[b_min > threshold] = kwargs['beta']*b_min[b_min > threshold]
+        b_min[b_min > threshold] = [None]*len(b_min[b_min > threshold])
         
+        b_min[:len(cg)][cg == 0] = None
+        b_max[:len(cd)][cd == 0] = None
+        b_min[xs['lam_p']:xs['lam_p']+xs['lam_q']] = None
         x = B_LS(A, b, tuple(zip(b_min, b_max)), threshold, verbose)
+    
+    elif alg == 4 and opt['mode'] == separate_mode:
+        Pg, Pd, P_res = np.zeros(Nbus), np.zeros(Nbus), np.zeros(Nbus)
+        gen_idxs = np.argwhere(results['gencost'][:, 4] > 0)#results['gen'][:, 0][results['gencost'][:, 4] > 0] - 1
+        gen_idxs = gen_idxs.astype(int)
+        #gen_idxs = np.setdiff1d(gen_idxs, idx_to_replace)
+        load_idxs = np.argwhere(results['gencost'][:, 4] < 0)#results['gen'][:, 0][results['gencost'][:, 4] < 0] - 1
+        load_idxs = load_idxs.astype(int)
+        
+        
+        Pg[gen_idxs] = results['gen'][:, PG][gen_idxs]
+        Pd[load_idxs] = results['gen'][:, PG][load_idxs]
+        
+        P_res += Pg
+        P_res[np.setdiff1d(load_idxs, gen_idxs)] = Pd[np.setdiff1d(load_idxs, gen_idxs)]
+        
+        C_obj = np.zeros(A.shape[1])
+        C_obj[:xs['lam_p']] += P_res[np.setdiff1d(np.arange(Nbus), idx_to_replace)]
+        #print(C_obj)
+        #C_obj[:xs['lam_p']] += Cd[np.setdiff1d(np.arange(Nbus), idx_to_replace)]
+        cg = Cg[np.setdiff1d(np.arange(Nbus), idx_to_replace)]
+        cd = Cd[np.setdiff1d(np.arange(Nbus), idx_to_replace)]
+        
+        b_min = np.zeros(A.shape[1])#np.array([None]*A.shape[1])
+        b_min[:len(cg)][cg > 0] = cg[cg > 0]
+        for i in range(len(b_min)):
+            if b_min[i] >= threshold:
+                print(b_min[i])
+                b_min[i] = None
+                print(b_min[i])
+        b_max = np.array([None]*A.shape[1])
+        b_max[:len(cd)][cd < 0] = abs(cd[cd < 0])
+        
+        b_max[:len(cd)][cd == 0] = threshold#2*b_min[b_min > threshold]
+        #b_min[b_min > threshold] = [None]*len(b_min[b_min > threshold])
+        
+        #b_min[:len(cg)][cg == 0] = 0.#-cg.max()
+        #b_max[:len(cd)][cd == 0] = None#cg.max()
+        b_min[xs['lam_p']:xs['lam_p']+xs['lam_q']] = None
+        
+        bounds = tuple(zip(b_min, b_max))
+        res = linprog(C_obj, 
+                      A_eq=A, 
+                      b_eq=b, 
+                      bounds=bounds,
+                      method='interior-point', 
+                      options={"maxiter": 10**6})
+        #print((A == 0).sum())
+        #print((b == 0).sum())
+        print(res.fun)
+        #print(res.x)
+        x = res.x
     else:
         print('Setting Error')
         x = np.zeros(A.shape[1])

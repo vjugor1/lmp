@@ -1,7 +1,8 @@
 import numpy as np
 from numpy.linalg import matrix_rank
 from solution_options import *
-from scipy.optimize import minimize, nnls
+from scipy.optimize import minimize
+import cvxpy as cp
 
 get_idx_gencost = lambda results, threshold: (results['gen'][:, 0][results['gencost'][:, 4] > threshold] - 1).astype(int)
 
@@ -59,24 +60,41 @@ def ModCost(C, idx, new_C):
 
 
 def LS_NNLS(A, b, alg, verbose=False):
+    x = cp.Variable(A.shape[1])
+    cost = cp.sum_squares(A*x - b)
     if alg == LS:
-        res = np.linalg.lstsq(A, b)
+        prob = cp.Problem(cp.Minimize(cost))
+        #res = np.linalg.lstsq(A, b)
     else:
-        res = nnls(A, b)
-        
+        prob = cp.Problem(cp.Minimize(cost), [x >= np.zeros_like(x)])
+        #res = nnls(A, b)
+    prob.solve()    
     if verbose:
-        print('f(x^*) = %f' % res[1])
-    return res[0]
+        print('f(x^*) = %f' % prob.value)
+    return np.array(x.value).ravel()#res[0]
 
 def B_LS(A, b, bounds, threshold, verbose=False):
-    f = lambda x: np.dot(np.dot(A, x) - b, np.dot(A, x) - b)
-    x0 = np.random.randint(low=0., high=threshold, size=A.shape[1])
+    #x = cp.Variable(A.shape[1])
+    #cost = cp.sum_squares(A*x - b)
+    #b_min, b_max = bounds
+    #constraints = []
+    #if any(b_min != None):
+    #    constraints.append(x[b_min != None] >= b_min[b_min != None])
+    #if any(b_max != None):
+    #    constraints.append(x[b_max != None] <= b_max[b_max != None])
     
+    #prob = cp.Problem(cp.Minimize(cost), constraints)
+    #prob.solve(solver=cp.ECOS_BB, verbose=True)
+    f = lambda x: np.dot(np.dot(A, x) - b, np.dot(A, x) - b)
+    np.random.seed(0)
+    x0 = threshold*np.random.rand(A.shape[1])#np.random.randint(low=0., high=threshold, size=A.shape[1])
     res = minimize(f,
                    x0,
                    method='SLSQP',
-                   bounds=bounds, 
-                   options={'maxiter': 10**4,})
+                   bounds=bounds,
+                   tol=1e-8,
+                   options={'maxiter': 10**10,})
     if verbose:
-        print(res.fun)
-    return res.x
+        print('f(x^*) =', res.fun)
+    #print(np.array(x.value).ravel())    
+    return res.x#np.array(x.value).ravel()#
