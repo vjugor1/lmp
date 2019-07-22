@@ -26,18 +26,18 @@ def get_A_integral(ppc, Nhrs=2):
     n_buses = set_n_buses(ppc, Nhrs)
     n_gens  = len(gens_hrs) // 2
     
-    A_v = np.zeros((n_gens, ppc['bus'].shape[0]))
-    A_d = np.zeros((n_gens, ppc['bus'].shape[0]))
+    A_v = np.zeros((n_buses, ppc['bus'].shape[0]))
+    A_d = np.zeros((n_buses, ppc['bus'].shape[0]))
 
-    A_p = np.zeros((n_gens, ppc['bus'].shape[0]))
-    for i, gen_num in enumerate(gens_hrs[:len(gens_hrs)//2]):
-        A_p[i,int(gen_num)-1] = 1
-        A_p[i,int(gen_num)-1 + int(ppc['bus'].shape[0]/Nhrs)] = 1
-    #for i, row in enumerate(A_p):
-    #    if (i+1) in gens_hrs:
-    #        row[i] = 1
-    #        row[i + int(ppc['bus'].shape[0]/Nhrs)] = 1
-    A_q = np.zeros((n_gens, ppc['bus'].shape[0]))
+    A_p = np.zeros((n_buses, ppc['bus'].shape[0]))
+    #for i, gen_num in enumerate(gens_hrs[:len(gens_hrs)//2]):
+    #    A_p[i,int(gen_num)-1] = 1
+    #    A_p[i,int(gen_num)-1 + int(ppc['bus'].shape[0]/Nhrs)] = 1
+    for i, row in enumerate(A_p):
+        #if (i+1) in gens_hrs:
+        row[i] = 1
+        row[i + int(ppc['bus'].shape[0]/Nhrs)] = 1
+    A_q = np.zeros((n_buses, ppc['bus'].shape[0]))
     res1 = np.hstack((A_v, A_d))
     res2 = np.hstack((A_p, A_q))
     return np.hstack((res1, res2))
@@ -50,12 +50,15 @@ def get_l_n_u_inegral(ppc, lower_bound, upper_bound, Nhrs=2):
     
     n_buses = set_n_buses(ppc, Nhrs)
     n_gens  = len(gens_hrs) // 2    
-    l = np.zeros(n_gens)
-    u = np.zeros(n_gens)
+    l = np.zeros(n_buses)
+    u = np.zeros(n_buses)
     for i in range(len(l)):
         if (i+1) in gens_hrs:
             l[i] = lower_bound
             u[i] = upper_bound
+        else:
+            l[i] = -np.inf
+            u[i] =  np.inf
     return l, u
 
 def get_A_ramping(ppc, Nhrs=2):
@@ -65,18 +68,18 @@ def get_A_ramping(ppc, Nhrs=2):
     
     n_buses = set_n_buses(ppc, Nhrs)
     n_gens  = len(gens_hrs) // 2
-    A_v = np.zeros((n_gens, ppc['bus'].shape[0]))
-    A_d = np.zeros((n_gens, ppc['bus'].shape[0]))
+    A_v = np.zeros((n_buses, ppc['bus'].shape[0]))
+    A_d = np.zeros((n_buses, ppc['bus'].shape[0]))
 
-    A_p = np.zeros((n_gens, ppc['bus'].shape[0]))
-    for i, gen_num in enumerate(gens_hrs[:len(gens_hrs)//2]):
-        A_p[i,int(gen_num)-1] = -1
-        A_p[i,int(gen_num)-1 + int(ppc['bus'].shape[0]/Nhrs)] = 1
-    #for i, row in enumerate(A_p):
-    #    if (i+1) in gens_hrs:
-    #        row[i] = -1
-    #        row[i + int(ppc['bus'].shape[0]/Nhrs)] = 1
-    A_q = np.zeros((n_gens, ppc['bus'].shape[0]))
+    A_p = np.zeros((n_buses, ppc['bus'].shape[0]))
+    #for i, gen_num in enumerate(gens_hrs[:len(gens_hrs)//2]):
+    #    A_p[i,int(gen_num)-1] = -1
+    #    A_p[i,int(gen_num)-1 + int(ppc['bus'].shape[0]/Nhrs)] = 1
+    for i, row in enumerate(A_p):
+        #if (i+1) in gens_hrs:
+        row[i] = -1
+        row[i + int(ppc['bus'].shape[0]/Nhrs)] = 1
+    A_q = np.zeros((n_buses, ppc['bus'].shape[0]))
     res1 = np.hstack((A_v, A_d))
     res2 = np.hstack((A_p, A_q))
     return np.hstack((res1, res2))
@@ -90,12 +93,15 @@ def get_l_n_u_ramping(ppc, lower_bound, upper_bound, Nhrs=2):
     
     n_buses = set_n_buses(ppc, Nhrs)
     n_gens  = len(gens_hrs) // 2
-    l = np.zeros(n_gens)
-    u = np.zeros(n_gens)
+    l = np.zeros(n_buses)
+    u = np.zeros(n_buses)
     for i in range(len(l)):
         if (i+1) in gens_hrs:
             l[i] = lower_bound
             u[i] = upper_bound
+        else:
+            l[i] = -np.inf
+            u[i] =  np.inf
     return l, u
 
 def generate_Nhrs_cases(ppc, Nhrs=2):

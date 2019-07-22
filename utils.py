@@ -113,6 +113,7 @@ def is_price_forming(gen, gen_cost, verbose=False, Nhrs=1, results=None):
                     
                     logical_muls = gen[:, MU_PMAX][i + num_of_buses*hour] == 0 and gen[:, MU_PMIN][i+ num_of_buses*hour] == 0 and muls_dict['ls_int'][i + num_of_buses*(hour-1)] == 0 and muls_dict['ls_ram'][i + num_of_buses*(hour-1)] == 0 and muls_dict['us_int'][i + num_of_buses*(hour-1)] == 0 and muls_dict['us_ram'][i + num_of_buses*(hour-1)] == 0
                     
+                    
                     if gen_cost[i + num_of_buses * hour, 4] > 0. and logical_muls == True:
                         idx.append(i + num_of_buses * hour)
                         if verbose:
