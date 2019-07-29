@@ -104,7 +104,10 @@ def get_l_n_u_ramping(ppc, lower_bound, upper_bound, Nhrs=2):
             u[i] =  np.inf
     return l, u
 
-def generate_Nhrs_cases(ppc, Nhrs=2):
+def generate_Nhrs_cases(ppc, Nhrs=2, mul_dem=1.5, mul_gen=1.5):
+    """
+    muls are the factors for increasing or decreasing demand and generation
+    """
     ppc_Nhrs = deepcopy(ppc)
     to_copy_keys = list(ppc_Nhrs.keys())
     to_copy_keys.remove('version')
@@ -113,8 +116,10 @@ def generate_Nhrs_cases(ppc, Nhrs=2):
         for name in to_copy_keys:
             tmp = deepcopy(ppc_Nhrs[name])
             if name == 'bus' or name == 'gen':
-                #if name == 'bus':
-                #    tmp[:,[2,3]] *=1.
+                if name == 'bus':
+                    tmp[:,[2,3]] *= mul_dem
+                if name == 'gen':
+                    tmp[:,1] *= mul_gen
                 tmp[:,0] += 30
             if name == 'branch':
                 tmp[:,[0,1]] += 30

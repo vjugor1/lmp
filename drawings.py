@@ -103,7 +103,8 @@ def draw_nice_hists(gens, results):
                     label='Old')
     rects2 = ax[0].bar(ind + width, results['new_lam'][gens.astype(int) - 1], width,
                     label='New')
-    
+    #print('ind = ', ind)
+    #print('results[gencost][:, 4][results[gencost][:, 4] > 0] = ', results['gencost'][:, 4][results['gencost'][:, 4] > 0])
     rects2 = ax[0].bar(ind, results['gencost'][:, 4][results['gencost'][:, 4] > 0], width,
                     label='Cost')
 

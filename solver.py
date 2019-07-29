@@ -2,6 +2,8 @@ import numpy as np
 from collections import OrderedDict
 from scipy.optimize import linprog
 
+from pypower.idx_bus import BUS_TYPE, REF, VM, VA, MU_VMAX, MU_VMIN, LAM_P, LAM_Q
+
 from solution_options import *
 from solver_utils import *
 import utils
@@ -209,17 +211,25 @@ def Solve(dgT, dgeqT, results, threshold,
         cg = Cg[np.setdiff1d(np.arange(Nbus), idx_to_replace)]
         cd = Cd[np.setdiff1d(np.arange(Nbus), idx_to_replace)]
         
+        lams = results['bus'][:, LAM_P][np.setdiff1d(np.arange(Nbus), idx_to_replace)]
+        
         b_min = np.zeros(A.shape[1])#np.array([None]*A.shape[1])
         b_min[:len(cg)][cg > 0] = cg[cg > 0]
         
+        
         b_max = np.array([None]*A.shape[1])
-        b_max[:len(cd)][cd < 0] = abs(cd[cd < 0])
+        #print('cd = ', cd)
+        #print('[cd<0] = ', [cd<0])
+        #print('results[bus][:, LAM_P][cd < 0]=' ,results['bus'][:, LAM_P][cd < 0])
+        b_max[:len(cd)][cd < 0] = np.minimum(abs(cd[cd < 0]), abs(lams[cd < 0]))#without min
         
         b_max[b_min > threshold] = kwargs['beta']*b_min[b_min > threshold]
         b_min[b_min > threshold] = [None]*len(b_min[b_min > threshold])
         
-        b_min[:len(cg)][cg == 0] = None
-        b_max[:len(cd)][cd == 0] = None
+        b_min[:len(cg)][cg == 0] = np.zeros(len(b_min[:len(cg)][cg == 0]))#
+        b_max[:len(cd)][cd == 0] = abs(lams[cd == 0])
+        b_min[:len(cd)][cd == 0] = np.zeros(len(b_min[:len(cd)][cd == 0]))#
+        b_max[:len(cg)][cg > 0] = cg[cg > 0]*1.2
         b_min[xs['lam_p']:xs['lam_p']+xs['lam_q']] = None
         x = B_LS(A, b, tuple(zip(b_min, b_max)), threshold, verbose)
     
