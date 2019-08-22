@@ -87,6 +87,8 @@ def draw_nasty_profile(results, ylimit=None):
     plt.figure(figsize=(10, 5))
     plt.plot(results['bus'][:, 0], results['new_lam'], label='new')
     plt.plot(results['bus'][:, 0], results['bus'][:, LAM_P], label='old')
+    plt.ylabel('LAM_P')
+    plt.xlabel('BUS#')
     if ylimit is not None:
         plt.ylim(ylimit)
     plt.legend(loc='best')

@@ -23,7 +23,7 @@ LS = 0
 NNLS = 1
 PQ_R = 2
 BoundedLS = 3
-linprog = 4
+LINPROG = 4
 
 class InvalidSettings(Exception):
     pass
@@ -65,7 +65,7 @@ def set_options():
     clear_output()
     return options
 
-algs = [LS, NNLS, PQ_R, BoundedLS, linprog]
+algs = [LS, NNLS, PQ_R, BoundedLS, LINPROG]
 algs_discr = ['LS with no constraints', 
               'LS with x => 0', 
               'LS with all non negatives except lambdas', 
